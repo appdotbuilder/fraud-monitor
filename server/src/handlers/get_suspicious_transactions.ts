@@ -1,14 +1,25 @@
+import { db } from '../db';
+import { transactionsTable } from '../db/schema';
 import { type Transaction } from '../schema';
+import { eq, desc } from 'drizzle-orm';
 
 export const getSuspiciousTransactions = async (): Promise<Transaction[]> => {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to fetch all transactions flagged as suspicious.
-    //
-    // Implementation should:
-    // 1. Query transactions table filtering by is_suspicious = true
-    // 2. Order by timestamp descending (most recent suspicious first)
-    // 3. Include fraud_reason for context
-    // 4. Return array of suspicious transactions for monitoring dashboard
-    
-    return Promise.resolve([]);
+  try {
+    // Query transactions table filtering by is_suspicious = true
+    // Order by timestamp descending (most recent suspicious first)
+    const results = await db.select()
+      .from(transactionsTable)
+      .where(eq(transactionsTable.is_suspicious, true))
+      .orderBy(desc(transactionsTable.timestamp))
+      .execute();
+
+    // Convert numeric fields back to numbers before returning
+    return results.map(transaction => ({
+      ...transaction,
+      amount: parseFloat(transaction.amount) // Convert string back to number
+    }));
+  } catch (error) {
+    console.error('Failed to fetch suspicious transactions:', error);
+    throw error;
+  }
 };

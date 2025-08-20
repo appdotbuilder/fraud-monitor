@@ -1,21 +1,35 @@
+import { db } from '../db';
+import { transactionsTable } from '../db/schema';
 import { type UserTransactionSummary } from '../schema';
+import { eq, count, sum, max } from 'drizzle-orm';
 
 export const getUserTransactionSummary = async (userId: string): Promise<UserTransactionSummary> => {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to provide transaction analytics for a specific user.
-    //
-    // Implementation should:
-    // 1. Query transactions table for the given user_id
-    // 2. Calculate total transaction count and amount
-    // 3. Count suspicious transactions
-    // 4. Find most recent transaction timestamp
-    // 5. Return aggregated summary for fraud analysis
+  try {
+    // Query all transactions for the user to get comprehensive summary
+    const transactions = await db.select()
+      .from(transactionsTable)
+      .where(eq(transactionsTable.user_id, userId))
+      .execute();
+
+    // Calculate summary statistics
+    const totalTransactions = transactions.length;
+    const totalAmount = transactions.reduce((sum, transaction) => sum + parseFloat(transaction.amount), 0);
+    const suspiciousTransactions = transactions.filter(transaction => transaction.is_suspicious).length;
     
-    return Promise.resolve({
-        user_id: userId,
-        total_transactions: 0,
-        total_amount: 0,
-        suspicious_transactions: 0,
-        last_transaction_at: null
-    });
+    // Find the most recent transaction timestamp
+    const lastTransactionAt = transactions.length > 0 
+      ? new Date(Math.max(...transactions.map(t => t.timestamp.getTime())))
+      : null;
+
+    return {
+      user_id: userId,
+      total_transactions: totalTransactions,
+      total_amount: totalAmount,
+      suspicious_transactions: suspiciousTransactions,
+      last_transaction_at: lastTransactionAt
+    };
+  } catch (error) {
+    console.error('Failed to get user transaction summary:', error);
+    throw error;
+  }
 };
